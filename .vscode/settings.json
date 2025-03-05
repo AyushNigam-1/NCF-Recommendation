@@ -1,0 +1,14 @@
+{
+    "window.confirmSaveUntitledWorkspace": true,
+    "explorer.compactFolders": true,
+    "scm.compactFolders": true,
+    "editor.suggest.showFolders": true,
+    "workbench.activityBar.location": "bottom",
+    "workbench.editor.customLabels.enabled": true,
+    "workbench.editor.decorations.badges": true,
+    "workbench.editor.decorations.colors": true,
+    "workbench.editor.editorActionsLocation": "default",
+    "workbench.editor.empty.hint": "text",
+    "workbench.editor.enablePreview": true,
+    "workbench.editor.labelFormat": "default"
+}
