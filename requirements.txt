@@ -1,0 +1,19 @@
+pandas 
+numpy
+seaborn
+matplotlib
+scikit-learn
+pymongo
+# catboost
+# xgboost
+pyaml
+dill
+flask
+certifi
+python-dotenv
+mlflow
+dagshub
+fastapi
+uvicorn
+python-multipart
+-e .

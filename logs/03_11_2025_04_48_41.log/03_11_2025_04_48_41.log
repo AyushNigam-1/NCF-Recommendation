@@ -1,0 +1,22 @@
+[ 2025-03-11 04:48:46,628 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
+[ 2025-03-11 04:48:46,633 ] 107 dagshub - INFO - Accessing as ayushnigam843
+[ 2025-03-11 04:48:47,498 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/repos/ayushnigam843/Dynamic-Pricing-Online-Retail "HTTP/1.1 200 OK"
+[ 2025-03-11 04:48:48,289 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
+[ 2025-03-11 04:48:48,291 ] 107 dagshub - INFO - Initialized MLflow to track repo "ayushnigam843/Dynamic-Pricing-Online-Retail"
+[ 2025-03-11 04:48:48,299 ] 107 dagshub - INFO - Repository ayushnigam843/Dynamic-Pricing-Online-Retail initialized!
+[ 2025-03-11 04:48:48,300 ] 21 root - INFO - Initialized DataIngestion with config: <src.entity.config_entity.DataIngestionConfig object at 0x0000023AD8B2BCB0>
+[ 2025-03-11 04:48:48,300 ] 19 root - INFO - Initiate the data ingestion
+[ 2025-03-11 04:48:48,300 ] 107 root - INFO - Starting data ingestion process...
+[ 2025-03-11 04:48:48,868 ] 35 root - INFO - Fetching data from MongoDB collection: MoviesLinks in database: Database(MongoClient(host=['ac-4wygsq7-shard-00-01.zg5uxhv.mongodb.net:27017', 'ac-4wygsq7-shard-00-02.zg5uxhv.mongodb.net:27017', 'ac-4wygsq7-shard-00-00.zg5uxhv.mongodb.net:27017'], document_class=dict, tz_aware=False, connect=True, retrywrites=True, w='majority', appname='Cluster0', authsource='admin', replicaset='atlas-b6u0p2-shard-0', tls=True, tlscafile='C:\\Users\\Ayush\\NCF-Recommendation\\.venv\\Lib\\site-packages\\certifi\\cacert.pem'), 'MLData')
+[ 2025-03-11 04:48:50,886 ] 53 root - INFO - DataFrame created for collection MoviesLinks with shape: (9742, 3)
+[ 2025-03-11 04:48:50,886 ] 35 root - INFO - Fetching data from MongoDB collection: MoviesLinks in database: Database(MongoClient(host=['ac-4wygsq7-shard-00-01.zg5uxhv.mongodb.net:27017', 'ac-4wygsq7-shard-00-02.zg5uxhv.mongodb.net:27017', 'ac-4wygsq7-shard-00-00.zg5uxhv.mongodb.net:27017'], document_class=dict, tz_aware=False, connect=True, retrywrites=True, w='majority', appname='Cluster0', authsource='admin', replicaset='atlas-b6u0p2-shard-0', tls=True, tlscafile='C:\\Users\\Ayush\\NCF-Recommendation\\.venv\\Lib\\site-packages\\certifi\\cacert.pem'), 'MLData')
+[ 2025-03-11 04:48:51,405 ] 53 root - INFO - DataFrame created for collection MoviesLinks with shape: (9742, 3)
+[ 2025-03-11 04:48:51,405 ] 35 root - INFO - Fetching data from MongoDB collection: MoviesRatings in database: Database(MongoClient(host=['ac-4wygsq7-shard-00-01.zg5uxhv.mongodb.net:27017', 'ac-4wygsq7-shard-00-02.zg5uxhv.mongodb.net:27017', 'ac-4wygsq7-shard-00-00.zg5uxhv.mongodb.net:27017'], document_class=dict, tz_aware=False, connect=True, retrywrites=True, w='majority', appname='Cluster0', authsource='admin', replicaset='atlas-b6u0p2-shard-0', tls=True, tlscafile='C:\\Users\\Ayush\\NCF-Recommendation\\.venv\\Lib\\site-packages\\certifi\\cacert.pem'), 'MLData')
+[ 2025-03-11 04:48:53,728 ] 53 root - INFO - DataFrame created for collection MoviesRatings with shape: (100836, 4)
+[ 2025-03-11 04:48:53,728 ] 35 root - INFO - Fetching data from MongoDB collection: MoviesTags in database: Database(MongoClient(host=['ac-4wygsq7-shard-00-01.zg5uxhv.mongodb.net:27017', 'ac-4wygsq7-shard-00-02.zg5uxhv.mongodb.net:27017', 'ac-4wygsq7-shard-00-00.zg5uxhv.mongodb.net:27017'], document_class=dict, tz_aware=False, connect=True, retrywrites=True, w='majority', appname='Cluster0', authsource='admin', replicaset='atlas-b6u0p2-shard-0', tls=True, tlscafile='C:\\Users\\Ayush\\NCF-Recommendation\\.venv\\Lib\\site-packages\\certifi\\cacert.pem'), 'MLData')
+[ 2025-03-11 04:48:53,975 ] 53 root - INFO - DataFrame created for collection MoviesTags with shape: (3683, 4)
+[ 2025-03-11 04:48:53,976 ] 113 root - INFO - Exported data from collection: MoviesLinks
+[ 2025-03-11 04:48:53,976 ] 113 root - INFO - Exported data from collection: MoviesRatings
+[ 2025-03-11 04:48:53,976 ] 113 root - INFO - Exported data from collection: MoviesTags
+[ 2025-03-11 04:48:53,976 ] 115 root - INFO - Data ingestion completed successfully.
+[ 2025-03-11 04:48:53,976 ] 119 root - ERROR - Error in data ingestion process: 'DataIngestion' object has no attribute 'feature_store_file_path'
