@@ -4,7 +4,6 @@ from src.exception.exception import CustomException
 from src.logging.logger import logging
 import os
 import sys
-import numpy as np
 import pandas as pd
 import pymongo
 from dotenv import load_dotenv
@@ -35,7 +34,7 @@ class DataIngestion:
                 logging.info("Fetching data from MongoDB collection: %s in database: %s", collection_name, db)
                 collection = db[collection_name]
                 
-                mongo_data = list(collection.find())
+                mongo_data = list(collection.find(limit=100))
                 
                 if not mongo_data:
                     logging.warning("No data found in collection: %s", collection_name)
@@ -47,7 +46,6 @@ class DataIngestion:
                 columns = list(mongo_data[0].keys())
                 values = [list(doc.values()) for doc in mongo_data]
                 df = pd.DataFrame(values, columns=columns)
-                df.replace({"na": np.nan}, inplace=True)
                 
                 dataframes[collection_name] = df
                 logging.info("DataFrame created for collection %s with shape: %s", collection_name, df.shape)
@@ -89,7 +87,7 @@ class DataIngestion:
                 logging.info("Exported data from collection: %s", collection_name)
             
             logging.info("Data ingestion completed successfully.")
-            return DataIngestionArtifact(feature_store_path=self.data_ingestion_config.feature_store_file_path)
+            return DataIngestionArtifact(feature_store_path=self.data_ingestion_config.feature_store_file_path,files_name=self.data_ingestion_config.collections_name)
         
         except Exception as e:
             logging.error("Error in data ingestion process: %s", str(e))

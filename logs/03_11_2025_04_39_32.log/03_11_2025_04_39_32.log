@@ -1,2 +1,0 @@
-[ 2025-03-11 04:39:37,144 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
-[ 2025-03-11 04:39:37,149 ] 107 dagshub - INFO - Accessing as ayushnigam843

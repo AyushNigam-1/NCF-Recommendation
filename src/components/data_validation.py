@@ -34,12 +34,13 @@ class DataValidation:
         return list(config["columns"].keys())
     
 
-    def validate_dtypes(self, dataframe: pd.DataFrame) -> bool:
+    def validate_dtypes(self, dataframe: pd.DataFrame,file_name:str) -> bool:
         try:            
-            expected_dtypes = self._schema_config.get("columns", {})
+            expected_dtypes = self._schema_config.get(file_name, {})
+            print(expected_dtypes)
             validation_passed = True
 
-            for column, expected_dtype in expected_dtypes.items():
+            for column, expected_dtype in expected_dtypes.get("columns").items():
                 if column not in dataframe.columns:
                     logging.error(f"Missing column: {column} (Expected dtype: {expected_dtype})")
                     validation_passed = False
@@ -61,10 +62,9 @@ class DataValidation:
             raise CustomException(e, sys)
 
     
-    def validate_number_of_columns(self, dataframe: pd.DataFrame) -> bool:
+    def validate_number_of_columns(self, dataframe: pd.DataFrame,file_name:str) -> bool:
         try:
-            expected_columns = list(self._schema_config["columns"].keys()) 
-            print(expected_columns , dataframe.columns)
+            expected_columns = list(self._schema_config[file_name]['columns'].keys()) 
             return set(dataframe.columns) == set(expected_columns)
         except Exception as e:
             raise CustomException(e, sys)
@@ -81,69 +81,40 @@ class DataValidation:
         except Exception as e:
             raise CustomException(e, sys)
     
-    def check_outliers(self, dataframe: pd.DataFrame, threshold=1.5) -> bool:
-        try:
-            status = True
-            for column in dataframe.select_dtypes(include=['int64', 'float64']).columns:
-                q1 = dataframe[column].quantile(0.25)
-                q3 = dataframe[column].quantile(0.75)
-                iqr = q3 - q1
-                outliers = ((dataframe[column] < (q1 - threshold * iqr)) | (dataframe[column] > (q3 + threshold * iqr))).sum()
-                if outliers > 0:
-                    status = False
-            return status
-        except Exception as e:
-            raise CustomException(e, sys)
     
-    def detect_dataset_drift(self, base_df: pd.DataFrame, current_df: pd.DataFrame, threshold=0.05) -> bool:
-        try:
-            status = True
-            report = {}
-            for column in base_df.columns:
-                d1, d2 = base_df[column], current_df[column]
-                p_value = ks_2samp(d1, d2).pvalue
-                drift_detected = p_value < threshold
-                report[column] = {"p_value": float(p_value), "drift_status": drift_detected}
-                if drift_detected:
-                    status = False
-            drift_report_file_path = self.data_validation_config.drift_report_file_path
-            os.makedirs(os.path.dirname(drift_report_file_path), exist_ok=True)
-            write_yaml_file(file_path=drift_report_file_path, content=report)
-            return status
-        except Exception as e:
-            raise CustomException(e, sys)
     
     def initiate_data_validation(self) -> DataValidationArtifact:
         try:
+            valid_data_paths = []
             data_file_path = self.data_ingestion_artifact.feature_store_path
-            dataframe = self.read_data(data_file_path)
+            files_name = self.data_ingestion_artifact.files_name
+            for file_name in files_name:
+                dataframe = self.read_data(data_file_path+file_name+'.csv')
+                
+                if not self.validate_dtypes(dataframe,file_name):
+                    logging.info("Data type mismatch detected, initiating data cleaning...")
+                    dataframe = self.data_cleaning.convert_data_types(dataframe) 
 
-            if not self.validate_dtypes(dataframe):
-                logging.info("Data type mismatch detected, initiating data cleaning...")
-                dataframe = self.data_cleaning.convert_data_types(dataframe) 
+                if not self.validate_number_of_columns(dataframe,file_name):
+                    logging.error("Dataset does not contain the required columns.")
+                    return None
 
-            if not self.validate_number_of_columns(dataframe):
-                logging.error("Dataset does not contain the required columns.")
-                return None
+                if not self.check_missing_values(dataframe):
+                    logging.info("Missing values detected, initiating data cleaning...")
+                    dataframe = self.data_cleaning.handle_missing_values(dataframe)
+                
+                if not self.check_duplicate_rows(dataframe):
+                    logging.info("Duplicate rows detected, initiating data cleaning...")
+                    dataframe = self.data_cleaning.handle_duplicate_rows(dataframe)
 
-            if not self.check_missing_values(dataframe):
-                logging.info("Missing values detected, initiating data cleaning...")
-                dataframe = self.data_cleaning.handle_missing_values(dataframe)
+                valid_data_path = self.data_validation_config.valid_file_path +file_name+'.csv'
+                os.makedirs(os.path.dirname(valid_data_path), exist_ok=True)
+                dataframe.to_csv(valid_data_path, index=False, header=True)
+
+                valid_data_paths.append(valid_data_path)
             
-            if not self.check_duplicate_rows(dataframe):
-                logging.info("Duplicate rows detected, initiating data cleaning...")
-                dataframe = self.data_cleaning.handle_duplicate_rows(dataframe)
-
-            if not self.check_outliers(dataframe):
-                logging.info("Outliers detected, initiating data cleaning...")
-                dataframe = self.data_cleaning.handle_outliers(dataframe)
-
-            valid_data_path = self.data_validation_config.valid_file_path
-            os.makedirs(os.path.dirname(valid_data_path), exist_ok=True)
-            dataframe.to_csv(valid_data_path, index=False, header=True)
-
             validation_artifact = DataValidationArtifact(
-                valid_data_file_path=valid_data_path,
+                valid_data_file_path=valid_data_paths,
             )
             return validation_artifact
         except Exception as e:
