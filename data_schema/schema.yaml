@@ -6,20 +6,20 @@ Movies:
 
 MoviesRatings:
   columns:
-    userId: float64
-    movieId: float64
+    userId: int64
+    movieId: int64
     rating: float64
     timestamp : float64
 
 MoviesTags:
   columns:
-    userId: float64
-    movieId: float64
+    userId: int64
+    movieId: int64
     tag: object
     timestamp: int64
 
 MoviesLinks:
   columns:
-    movieId: float64
-    imdbId: float64
-    tmdbId: float64
+    movieId: int64
+    imdbId: int64
+    tmdbId: int64

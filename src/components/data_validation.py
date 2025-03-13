@@ -4,10 +4,9 @@ from src.components.data_cleaning import DataCleaning
 from src.exception.exception import CustomException 
 from src.logging.logger import logging 
 from src.constants.training_pipeline import SCHEMA_FILE_PATH
-from scipy.stats import ks_2samp
 import pandas as pd
 import os, sys
-from src.utils.main_utils.utils import read_yaml_file, write_yaml_file
+from src.utils.main_utils.utils import read_yaml_file
 
 class DataValidation:
     def __init__(self, data_ingestion_artifact: DataIngestionArtifact,
