@@ -39,7 +39,8 @@ class DataTransformation:
         except Exception as e:
             raise CustomException(e, sys)
         
-    def perform_feature_engineering(self, combined_df):
+    def perform_feature_engineering(self, combined_df:pd.DataFrame):
+        print(combined_df['userId'])
         try:
             # Explicitly convert to string and strip whitespace
             combined_df['tag'] = combined_df['tag'].astype(str).str.strip()
@@ -51,13 +52,13 @@ class DataTransformation:
             combined_df['genres'] = combined_df['genres'].str.lower().str.replace("|", ",")
             combined_df = combined_df.groupby(['movieId', 'title', 'genres'])['tag'].apply(lambda x: ', '.join(x)).reset_index()
             combined_df['content'] = combined_df['genres'] + ',' + combined_df['tag']
-            combined_df = combined_df.sort_values(by=['userId', 'movieId', 'rating_timestamp'], ascending=[True, True, False])
+            combined_df = combined_df.sort_values(by=['userId', 'movieId', 'timestamp'], ascending=[True, True, False])
             combined_df = combined_df.drop_duplicates(subset=['userId', 'movieId'], keep='first').reset_index(drop=True)
             combined_df['release_year'] = combined_df['title'].str.extract(r'\((\d{4})\)').astype(float)
             median_year = combined_df['release_year'].median()
             combined_df['release_year'] = combined_df['release_year'].fillna(median_year)
-            current_time = combined_df['rating_timestamp'].max() # Use rating_timestamp
-            combined_df['time_decay_weight'] = combined_df['rating_timestamp'].apply(lambda x: np.exp(-0.001 * (current_time - x) / (60 * 60 * 24))) # Use rating_timestamp
+            current_time = combined_df['timestamp'].max() # Use timestamp
+            combined_df['time_decay_weight'] = combined_df['timestamp'].apply(lambda x: np.exp(-0.001 * (current_time - x) / (60 * 60 * 24))) # Use timestamp
             current_year = combined_df['release_year'].max()
             combined_df['year_decay_weight'] = combined_df['release_year'].apply(lambda x: np.exp(-0.001 * (current_year - x)))
             combined_df['combined_decay'] = combined_df['time_decay_weight'] * combined_df['year_decay_weight']
@@ -77,22 +78,16 @@ class DataTransformation:
                 raise ValueError("Expected 4 file paths: movies, ratings, tags, links.")
 
             movies = self.read_data(file_paths[0])  # movies.csv
-            ratings = self.read_data(file_paths[1])  # ratings.csv
-            tags = self.read_data(file_paths[2])    # tags.csv
-            #links = self.read_data(file_paths[3])    #links.csv (not used)
+            ratings = self.read_data(file_paths[2])  # ratings.csv
+            tags = self.read_data(file_paths[3])    # tags.csv
+            #links = self.read_data(file_paths[2])    #links.csv (not used)
 
             merged_df = pd.merge(movies, tags, on='movieId', how='left')
-            combined_df = pd.merge(merged_df, ratings, on='movieId', how='left')
-
-            # Rename userId columns
-            combined_df.rename(columns={'userId_x': 'userId'}, inplace=True)
-            combined_df.drop(columns=['userId_y'], inplace=True)
-
-            # Drop duplicate timestamp columns
-            combined_df.rename(columns={'timestamp_x': 'timestamp'}, inplace=True)
-            combined_df.drop(columns=['timestamp_y'], inplace=True)
+            movies = merged_df.groupby(['movieId', 'title', 'genres'])['tag'].apply(lambda x: ', '.join(x.dropna().astype(str))).reset_index()
+            combined_df = pd.merge(movies, ratings, on='movieId', how='left')
 
             print("Columns after merge and rename:", combined_df.columns)
+            print(combined_df.columns.tolist())
 
             df = self.perform_feature_engineering(combined_df)
             transformer = self.get_data_transformer_object(df['content'])
