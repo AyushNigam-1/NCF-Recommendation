@@ -14,7 +14,7 @@ import os
 import mlflow
 import dagshub
 
-dagshub.init(repo_owner='ayushnigam843', repo_name='Dynamic-Pricing-Online-Retail', mlflow=True)
+# dagshub.init(repo_owner='ayushnigam843', repo_name='Dynamic-Pricing-Online-Retail', mlflow=True)
 
 
 class ModelTrainer:

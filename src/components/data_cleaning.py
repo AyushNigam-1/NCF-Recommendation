@@ -74,10 +74,11 @@ class DataCleaning:
             raise CustomException(e)
 
 
-    def convert_data_types(self, df: pd.DataFrame) -> pd.DataFrame:
-        expected_dtypes = self._schema_config.get("columns", {})
+    def convert_data_types(self, df: pd.DataFrame,file_name:str) -> pd.DataFrame:
+        expected_dtypes = self._schema_config[file_name]['columns']
         try:
-            for column, expected_dtype in expected_dtypes.items():                
+            for column, expected_dtype in expected_dtypes.items():
+                print(column,expected_dtype)                
                 if column in df.columns:
                     actual_dtype = str(df[column].dtype)
 

@@ -36,7 +36,7 @@ class DataValidation:
     def validate_dtypes(self, dataframe: pd.DataFrame,file_name:str) -> bool:
         try:            
             expected_dtypes = self._schema_config.get(file_name, {})
-            print(expected_dtypes)
+            # print(expected_dtypes)
             validation_passed = True
 
             for column, expected_dtype in expected_dtypes.get("columns").items():
@@ -70,6 +70,7 @@ class DataValidation:
     
     def check_missing_values(self, dataframe: pd.DataFrame) -> bool:
         try:
+            # print (dataframe.isna().sum())
             return not dataframe.isnull().sum().any()
         except Exception as e:
             raise CustomException(e, sys)
@@ -92,7 +93,7 @@ class DataValidation:
                 
                 if not self.validate_dtypes(dataframe,file_name):
                     logging.info("Data type mismatch detected, initiating data cleaning...")
-                    dataframe = self.data_cleaning.convert_data_types(dataframe) 
+                    dataframe = self.data_cleaning.convert_data_types(dataframe,file_name) 
 
                 if not self.validate_number_of_columns(dataframe,file_name):
                     logging.error("Dataset does not contain the required columns.")

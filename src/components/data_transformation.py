@@ -16,7 +16,7 @@ class DataTransformation:
     def __init__(self, data_validation_artifact: DataValidationArtifact,
                  data_transformation_config: DataTransformationConfig):
         try:
-            print("llloooooll ------------>>>>>>>>>>>>" , data_validation_artifact)
+            # print("llloooooll ------------>>>>>>>>>>>>" , data_validation_artifact)
             self.data_validation_artifact: DataValidationArtifact = data_validation_artifact
             self.data_transformation_config: DataTransformationConfig = data_transformation_config
         except Exception as e:
@@ -40,20 +40,18 @@ class DataTransformation:
             raise CustomException(e, sys)
         
     def perform_feature_engineering(self, combined_df:pd.DataFrame):
-        print(combined_df['userId'])
+        # print(combined_df['userId'])
         try:
             # Explicitly convert to string and strip whitespace
             combined_df['tag'] = combined_df['tag'].astype(str).str.strip()
 
             # Fill NaN values in the 'tag' column with an empty string
             combined_df['tag'] = combined_df['tag'].fillna('')
-
-            combined_df["tag"] = combined_df["tag"].str.lower().str.replace(" ", ",")
-            combined_df['genres'] = combined_df['genres'].str.lower().str.replace("|", ",")
-            combined_df = combined_df.groupby(['movieId', 'title', 'genres'])['tag'].apply(lambda x: ', '.join(x)).reset_index()
-            combined_df['content'] = combined_df['genres'] + ',' + combined_df['tag']
             combined_df = combined_df.sort_values(by=['userId', 'movieId', 'timestamp'], ascending=[True, True, False])
             combined_df = combined_df.drop_duplicates(subset=['userId', 'movieId'], keep='first').reset_index(drop=True)
+            combined_df["tag"] = combined_df["tag"].str.lower().str.replace(" ", ",")
+            combined_df['genres'] = combined_df['genres'].str.lower().str.replace("|", ",")
+            combined_df['content'] = combined_df['genres'] + ',' + combined_df['tag']
             combined_df['release_year'] = combined_df['title'].str.extract(r'\((\d{4})\)').astype(float)
             median_year = combined_df['release_year'].median()
             combined_df['release_year'] = combined_df['release_year'].fillna(median_year)
@@ -67,7 +65,16 @@ class DataTransformation:
             return combined_df
         except Exception as e:
             raise CustomException(e, sys)
-
+        
+    def split_train_test(self, X: pd.DataFrame, test_size: float = 0.2, random_state: int = 42):
+        logging.info("Splitting dataset into train and test sets...")
+        
+        train , test= train_test_split(X, test_size=test_size, random_state=random_state)
+        
+        logging.info(f"Train shape: {train.shape}, Test shape: {test.shape}")
+        
+        return train, test
+    
     def initiate_data_transformation(self) -> DataTransformationArtifact:
         logging.info("Entered initiate_data_transformation method of DataTransformation class")
         try:
@@ -80,19 +87,17 @@ class DataTransformation:
             movies = self.read_data(file_paths[0])  # movies.csv
             ratings = self.read_data(file_paths[2])  # ratings.csv
             tags = self.read_data(file_paths[3])    # tags.csv
-            #links = self.read_data(file_paths[2])    #links.csv (not used)
+            #links = self.read_data(file_paths[1])    #links.csv (not used)
 
-            merged_df = pd.merge(movies, tags, on='movieId', how='left')
+            merged_df = pd.merge(movies, tags, on='movieId')
             movies = merged_df.groupby(['movieId', 'title', 'genres'])['tag'].apply(lambda x: ', '.join(x.dropna().astype(str))).reset_index()
-            combined_df = pd.merge(movies, ratings, on='movieId', how='left')
-
-            print("Columns after merge and rename:", combined_df.columns)
-            print(combined_df.columns.tolist())
-
+            combined_df = pd.merge(movies,ratings,on='movieId')
+            combined_df = combined_df.sort_values(by=['userId', 'movieId', 'timestamp'], ascending=[True, True, False])
             df = self.perform_feature_engineering(combined_df)
             transformer = self.get_data_transformer_object(df['content'])
             genres_encoded = pd.DataFrame(transformer.transform(df['content']), columns=transformer.classes_, index=df.index)
             df = pd.concat([df, genres_encoded], axis=1)
+            print(df)
             train_df, test_df = self.split_train_test(df)
             train_arr = train_df.to_numpy()
             test_arr = test_df.to_numpy()
