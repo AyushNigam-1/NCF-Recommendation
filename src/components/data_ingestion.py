@@ -81,7 +81,7 @@ class DataIngestion:
             logging.info("Starting data ingestion process...")
             
             dataframes = self.export_multiple_collections_as_dataframe()
-            print(dataframes.items())
+            # print(dataframes.items())
             for collection_name, dataframe in dataframes.items():
                 self.export_data_into_feature_store(dataframe , collection_name)
                 logging.info("Exported data from collection: %s", collection_name)

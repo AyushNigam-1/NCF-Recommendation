@@ -40,12 +40,9 @@ class DataTransformation:
             raise CustomException(e, sys)
         
     def perform_feature_engineering(self, combined_df:pd.DataFrame):
-        # print(combined_df['userId'])
         try:
-            # Explicitly convert to string and strip whitespace
             combined_df['tag'] = combined_df['tag'].astype(str).str.strip()
 
-            # Fill NaN values in the 'tag' column with an empty string
             combined_df['tag'] = combined_df['tag'].fillna('')
             combined_df = combined_df.sort_values(by=['userId', 'movieId', 'timestamp'], ascending=[True, True, False])
             combined_df = combined_df.drop_duplicates(subset=['userId', 'movieId'], keep='first').reset_index(drop=True)
@@ -60,20 +57,19 @@ class DataTransformation:
             current_year = combined_df['release_year'].max()
             combined_df['year_decay_weight'] = combined_df['release_year'].apply(lambda x: np.exp(-0.001 * (current_year - x)))
             combined_df['combined_decay'] = combined_df['time_decay_weight'] * combined_df['year_decay_weight']
-            combined_df['userId'] -= 1
-            combined_df['movieId'] -= 1
+            combined_df['userId'] -= 2
+            combined_df['movieId'] -= 2
             return combined_df
         except Exception as e:
             raise CustomException(e, sys)
         
     def split_train_test(self, X: pd.DataFrame, test_size: float = 0.2, random_state: int = 42):
         logging.info("Splitting dataset into train and test sets...")
-        
         train , test= train_test_split(X, test_size=test_size, random_state=random_state)
         
         logging.info(f"Train shape: {train.shape}, Test shape: {test.shape}")
         
-        return train, test
+        return train, test 
     
     def initiate_data_transformation(self) -> DataTransformationArtifact:
         logging.info("Entered initiate_data_transformation method of DataTransformation class")
@@ -97,7 +93,6 @@ class DataTransformation:
             transformer = self.get_data_transformer_object(df['content'])
             genres_encoded = pd.DataFrame(transformer.transform(df['content']), columns=transformer.classes_, index=df.index)
             df = pd.concat([df, genres_encoded], axis=1)
-            print(df)
             train_df, test_df = self.split_train_test(df)
             train_arr = train_df.to_numpy()
             test_arr = test_df.to_numpy()
@@ -108,6 +103,7 @@ class DataTransformation:
                 transformed_object_file_path=self.data_transformation_config.transformed_object_file_path,
                 transformed_train_file_path=self.data_transformation_config.transformed_train_file_path,
                 transformed_test_file_path=self.data_transformation_config.transformed_test_file_path,
+                dataframe_columns=df.columns
             )
             return data_transformation_artifact
         except Exception as e:

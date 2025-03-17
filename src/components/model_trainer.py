@@ -1,122 +1,116 @@
 import os
 import sys
-from src.exception.exception import CustomException 
-from src.entity.artifact_entity import DataTransformationArtifact,ModelTrainerArtifact
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import MultiLabelBinarizer
+from tensorflow.keras.layers import Input, Embedding, Flatten, Concatenate, Dense, Dropout
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from src.exception.exception import CustomException
+from src.entity.artifact_entity import DataTransformationArtifact, ModelTrainerArtifact
 from src.entity.config_entity import ModelTrainerConfig
-from src.utils.ml_utils.model.estimator import MLModel
-from src.utils.main_utils.utils import save_object,load_object
-from src.utils.main_utils.utils import load_numpy_array_data,evaluate_models
+from src.utils.main_utils.utils import save_object, load_object, load_numpy_array_data, evaluate_models
 from src.utils.ml_utils.metric.regression_metric import get_regression_score
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.tree import DecisionTreeRegressor
-import os        
-import mlflow
-import dagshub
-
-# dagshub.init(repo_owner='ayushnigam843', repo_name='Dynamic-Pricing-Online-Retail', mlflow=True)
-
 
 class ModelTrainer:
-    def __init__(self,model_trainer_config:ModelTrainerConfig,data_transformation_artifact:DataTransformationArtifact):
+    def __init__(self, model_trainer_config: ModelTrainerConfig, data_transformation_artifact: DataTransformationArtifact):
         try:
-            self.model_trainer_config=model_trainer_config
-            self.data_transformation_artifact=data_transformation_artifact
+            self.model_trainer_config = model_trainer_config
+            self.data_transformation_artifact = data_transformation_artifact
         except Exception as e:
-            raise CustomException(e,sys)
+            raise CustomException(e, sys)
 
+    def train_model(self, train, test, mlb):
+        train['userId'], user_index = pd.factorize(train['userId'])
+        train['movieId'], movie_index = pd.factorize(train['movieId'])
 
-    def track_mlflow(self, best_model, regression_metric):
+        test['userId'] = test['userId'].map(lambda x: user_index.get_loc(x) if x in user_index else -1)
+        test['movieId'] = test['movieId'].map(lambda x: movie_index.get_loc(x) if x in movie_index else -1)
+        test = test[(test['userId'] != -1) & (test['movieId'] != -1)]
 
-        with mlflow.start_run():
-            mlflow.log_metric("MAE", regression_metric.mae)
-            mlflow.log_metric("MSE", regression_metric.mse)
-            mlflow.log_metric("RMSE", regression_metric.rmse)
-            mlflow.log_metric("R2 Score", regression_metric.r2)
+        user_input = Input(shape=(1,), name='user_input')
+        item_input = Input(shape=(1,), name='item_input')
+        genre_input = Input(shape=(len(mlb.classes_),), name='genre_input')
 
-            mlflow.sklearn.log_model(best_model, "model")
+        user_embedding = Embedding(input_dim=len(user_index), output_dim=50, name='user_embedding')(user_input)
+        item_embedding = Embedding(input_dim=len(movie_index), output_dim=50, name='item_embedding')(item_input)
 
+        user_vector = Flatten()(user_embedding)
+        item_vector = Flatten()(item_embedding)
 
-    def train_model(self, X_train, y_train, x_test, y_test):
-        models = {
-            "Random Forest": RandomForestRegressor(verbose=1),
-            "Decision Tree": DecisionTreeRegressor(),
-            "Gradient Boosting": GradientBoostingRegressor(verbose=1),
-            "Linear Regression": LinearRegression(),
-            "AdaBoost": AdaBoostRegressor(),
-        }
+        concat = Concatenate()([user_vector, item_vector, genre_input])
 
-        params = {
-            "Decision Tree": {
-                'criterion': ['squared_error', 'friedman_mse', 'absolute_error', 'poisson'],
-            },
-            "Random Forest": {
-                'n_estimators': [8, 16, 32, 128, 256]
-            },
-            "Gradient Boosting": {
-                'learning_rate': [0.1, 0.01, 0.05, 0.001],
-                'subsample': [0.6, 0.7, 0.75, 0.85, 0.9],
-                'n_estimators': [8, 16, 32, 64, 128, 256]
-            },
-            "Linear Regression": {},  # No hyperparameters to tune
-            "AdaBoost": {
-                'learning_rate': [0.1, 0.01, 0.001],
-                'n_estimators': [8, 16, 32, 64, 128, 256]
-            }
-        }
+        dense_1 = Dense(128, activation='relu')(concat)
+        dense_1 = Dropout(0.3)(dense_1)
+        dense_2 = Dense(64, activation='relu')(dense_1)
+        output = Dense(1, activation='sigmoid')(dense_2)
 
-        model_report: dict = evaluate_models(X_train=X_train, y_train=y_train, X_test=x_test, y_test=y_test,
-                                            models=models, param=params)
+        model = Model([user_input, item_input, genre_input], output)
+        model.compile(optimizer=Adam(), loss='mean_squared_error', metrics=['accuracy'])
+        model.summary()
 
-        best_model_score = max(sorted(model_report.values()))
-        best_model_name = list(model_report.keys())[list(model_report.values()).index(best_model_score)]
-        best_model = models[best_model_name]
+        train_user = train['userId'].values
+        train_item = train['movieId'].values
+        train_rating = (train['rating'].values / 5.0) * train['combined_decay'].values
+        train_genres = train[mlb.classes_].values
 
-        y_train_pred = best_model.predict(X_train)
-        train_metric = get_regression_score(y_true=y_train, y_pred=y_train_pred)
+        test_user = test['userId'].values
+        test_item = test['movieId'].values
+        test_rating = (test['rating'].values / 5.0) * test['combined_decay'].values
+        test_genres = test[mlb.classes_].values
 
-        self.track_mlflow(best_model, train_metric)
+        history = model.fit(
+            [train_user, train_item, train_genres], train_rating,
+            validation_data=([test_user, test_item, test_genres], test_rating),
+            epochs=10, batch_size=256, verbose=1
+        )
 
-        y_test_pred = best_model.predict(x_test)
-        test_metric = get_regression_score(y_true=y_test, y_pred=y_test_pred)
-        self.track_mlflow(best_model, test_metric)
+        train_predictions = model.predict([train_user, train_item, train_genres])
+        test_predictions = model.predict([test_user, test_item, test_genres])
 
-        preprocessor = load_object(file_path=self.data_transformation_artifact.transformed_object_file_path)
+        train_metric = get_regression_score(y_true=train_rating, y_pred=train_predictions)
+        test_metric = get_regression_score(y_true=test_rating, y_pred=test_predictions)
 
-        model_dir_path = os.path.dirname(self.model_trainer_config.trained_model_file_path)
-        os.makedirs(model_dir_path, exist_ok=True)
-
-        Network_Model = MLModel(preprocessor=preprocessor, model=best_model)
-        save_object(self.model_trainer_config.trained_model_file_path, obj=Network_Model)
-        save_object("final_model/model.pkl", best_model)
+        save_object(self.model_trainer_config.trained_model_file_path, obj=model)
 
         model_trainer_artifact = ModelTrainerArtifact(
             trained_model_file_path=self.model_trainer_config.trained_model_file_path,
             train_metric_artifact=train_metric,
             test_metric_artifact=test_metric
         )
-
+        
         return model_trainer_artifact
 
-    
-    def initiate_model_trainer(self)->ModelTrainerArtifact:
+    def initiate_model_trainer(self) -> ModelTrainerArtifact:
         try:
             train_file_path = self.data_transformation_artifact.transformed_train_file_path
             test_file_path = self.data_transformation_artifact.transformed_test_file_path
+            mlb_file_path = self.data_transformation_artifact.transformed_object_file_path
+            dataframe_columns = self.data_transformation_artifact.dataframe_columns
 
-            train_arr = load_numpy_array_data(train_file_path)
-            test_arr = load_numpy_array_data(test_file_path)
+            train = load_numpy_array_data(train_file_path)
+            test = load_numpy_array_data(test_file_path)
 
-            x_train, y_train, x_test, y_test = (
-                train_arr[:, :-1],
-                train_arr[:, -1],
-                test_arr[:, :-1],
-                test_arr[:, -1],
-            )
+            train = pd.DataFrame(train, columns=dataframe_columns)
+            test = pd.DataFrame(test, columns=dataframe_columns)
 
-            model_trainer_artifact=self.train_model(x_train,y_train,x_test,y_test)
+            mlb = load_object(mlb_file_path)
+
+            model_trainer_artifact = self.train_model(train, test, mlb)
             return model_trainer_artifact
 
-            
         except Exception as e:
-            raise CustomException(e,sys)
+            raise CustomException(e, sys)
+
+        
+        
+        
+    # def track_mlflow(self, best_model, regression_metric):
+
+    #     with mlflow.start_run():
+    #         mlflow.log_metric("MAE", regression_metric.mae)
+    #         mlflow.log_metric("MSE", regression_metric.mse)
+    #         mlflow.log_metric("RMSE", regression_metric.rmse)
+    #         mlflow.log_metric("R2 Score", regression_metric.r2)
+
+    #         mlflow.sklearn.log_model(best_model, "model")
