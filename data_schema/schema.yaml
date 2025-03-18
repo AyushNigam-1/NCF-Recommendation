@@ -15,7 +15,7 @@ MoviesTags:
   columns:
     userId: int64
     movieId: int64
-    tag: object
+    tag: string
     timestamp: int64
 
 MoviesLinks:

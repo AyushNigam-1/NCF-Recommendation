@@ -3,6 +3,8 @@ from src.exception.exception import CustomException
 from src.logging.logger import logging
 import os,sys
 import numpy as np
+import pandas as pd
+import json
 #import dill
 import pickle
 
@@ -27,19 +29,27 @@ def write_yaml_file(file_path: str, content: object, replace: bool = False) -> N
     except Exception as e:
         raise CustomException(e, sys)
     
-def save_numpy_array_data(file_path: str, array: np.array):
-    """
-    Save numpy array data to file
-    file_path: str location of file to save
-    array: np.array data to save
-    """
-    try:
-        dir_path = os.path.dirname(file_path)
-        os.makedirs(dir_path, exist_ok=True)
-        with open(file_path, "wb") as file_obj:
-            np.save(file_obj, array)
-    except Exception as e:
-        raise CustomException(e, sys)
+def save_numpy_array_data(file_path: str, df: pd.DataFrame):
+    dir_path = os.path.dirname(file_path)
+    os.makedirs(dir_path, exist_ok=True)
+
+    # Save as .npy
+    np.save(file_path, df.to_numpy(), allow_pickle=True)
+
+    # Save as CSV
+    csv_path = file_path.replace(".npy", ".csv")
+    df.to_csv(csv_path, index=False)
+
+    # Save dtypes separately as .pkl
+    dtypes_path = file_path.replace(".npy", "_dtypes.pkl")
+    df.dtypes.to_pickle(dtypes_path)
+
+    # Save dtypes in a human-readable format (JSON)
+    dtypes_json_path = file_path.replace(".npy", "_dtypes.json")
+    with open(dtypes_json_path, "w") as f:
+        json.dump(df.dtypes.astype(str).to_dict(), f, indent=4)
+
+    print(f"Data saved:\n- NPY: {file_path}\n- CSV: {csv_path}\n- Dtypes PKL: {dtypes_path}\n- Dtypes JSON: {dtypes_json_path}")
     
 def save_object(file_path: str, obj: object) -> None:
     try:
@@ -51,7 +61,7 @@ def save_object(file_path: str, obj: object) -> None:
     except Exception as e:
         raise CustomException(e, sys)
 
-def load_object(file_path: str, ) -> object:
+def load_object(file_path: str ) -> object:
     try:
         if not os.path.exists(file_path):
             raise Exception(f"The file: {file_path} is not exists")
@@ -61,17 +71,23 @@ def load_object(file_path: str, ) -> object:
     except Exception as e:
         raise CustomException(e, sys) from e
     
-def load_numpy_array_data(file_path: str) -> np.array:
-    """
-    load numpy array data from file
-    file_path: str location of file to load
-    return: np.array data loaded
-    """
+def load_numpy_array_data(file_path: str) -> pd.DataFrame:
     try:
-        with open(file_path, "rb") as file_obj:
-            return np.load(file_obj, allow_pickle=True)
+        # Load the data
+        array = np.load(file_path, allow_pickle=True)
+
+        # Load the dtypes
+        dtypes_path = file_path.replace(".npy", "_dtypes.pkl")
+        dtypes = pd.read_pickle(dtypes_path)
+        print("dtypes -->",dtypes)
+        # Convert back to DataFrame with correct dtypes
+        df = pd.DataFrame(array, columns=dtypes.index)
+        df = df.astype(dtypes.to_dict())  # Restore dtypes
+        return df
+
     except Exception as e:
         raise CustomException(e, sys) from e
+
     
 
 

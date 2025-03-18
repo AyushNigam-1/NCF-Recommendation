@@ -16,7 +16,6 @@ class DataTransformation:
     def __init__(self, data_validation_artifact: DataValidationArtifact,
                  data_transformation_config: DataTransformationConfig):
         try:
-            # print("llloooooll ------------>>>>>>>>>>>>" , data_validation_artifact)
             self.data_validation_artifact: DataValidationArtifact = data_validation_artifact
             self.data_transformation_config: DataTransformationConfig = data_transformation_config
         except Exception as e:
@@ -33,7 +32,8 @@ class DataTransformation:
         try:
             logging.info("Creating data transformer object...")
             mlb = MultiLabelBinarizer()
-            mlb.fit(content_series)
+            content_list = content_series.apply(lambda x: x.split(','))  # Ensure it's a list of lists
+            mlb.fit(content_list)
             logging.info("Data transformer object created successfully.")
             return mlb
         except Exception as e:
@@ -91,13 +91,17 @@ class DataTransformation:
             combined_df = combined_df.sort_values(by=['userId', 'movieId', 'timestamp'], ascending=[True, True, False])
             df = self.perform_feature_engineering(combined_df)
             transformer = self.get_data_transformer_object(df['content'])
-            genres_encoded = pd.DataFrame(transformer.transform(df['content']), columns=transformer.classes_, index=df.index)
+            genres_encoded = pd.DataFrame(transformer.transform(df['content'].apply(lambda x: x.split(','))), 
+                                        columns=transformer.classes_, 
+                                        index=df.index)
             df = pd.concat([df, genres_encoded], axis=1)
+            
             train_df, test_df = self.split_train_test(df)
-            train_arr = train_df.to_numpy()
-            test_arr = test_df.to_numpy()
-            save_numpy_array_data(self.data_transformation_config.transformed_train_file_path, array=train_arr)
-            save_numpy_array_data(self.data_transformation_config.transformed_test_file_path, array=test_arr)
+            # print(train_df.dtypes)
+            # print(train_df.dtypes)
+            
+            save_numpy_array_data(self.data_transformation_config.transformed_train_file_path, df=train_df)
+            save_numpy_array_data(self.data_transformation_config.transformed_test_file_path, df=test_df)
             save_object(self.data_transformation_config.transformed_object_file_path, transformer)
             data_transformation_artifact = DataTransformationArtifact(
                 transformed_object_file_path=self.data_transformation_config.transformed_object_file_path,

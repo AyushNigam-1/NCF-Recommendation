@@ -95,6 +95,8 @@ class ModelTrainer:
             test = pd.DataFrame(test, columns=dataframe_columns)
 
             mlb = load_object(mlb_file_path)
+            # print(train.dtypes)
+            # print(test.dtypes)
 
             model_trainer_artifact = self.train_model(train, test, mlb)
             return model_trainer_artifact
