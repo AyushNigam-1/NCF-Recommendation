@@ -1,4 +1,4 @@
-import os
+import os 
 import sys
 import numpy as np
 import pandas as pd
@@ -9,7 +9,7 @@ from tensorflow.keras.optimizers import Adam
 from src.exception.exception import CustomException
 from src.entity.artifact_entity import DataTransformationArtifact, ModelTrainerArtifact
 from src.entity.config_entity import ModelTrainerConfig
-from src.utils.main_utils.utils import save_object, load_object, load_numpy_array_data, evaluate_models
+from src.utils.main_utils.utils import save_object, load_object, load_numpy_array_data
 from src.utils.ml_utils.metric.regression_metric import get_regression_score
 
 class ModelTrainer:
@@ -52,13 +52,23 @@ class ModelTrainer:
         train_user = train['userId'].values
         train_item = train['movieId'].values
         train_rating = (train['rating'].values / 5.0) * train['combined_decay'].values
-        train_genres = train[mlb.classes_].values
+        
+        # Convert genres to numeric format and ensure correct data type
+        train[mlb.classes_] = train[mlb.classes_].apply(pd.to_numeric, errors='coerce')
+        train_genres = np.array(train[mlb.classes_].values, dtype=np.float32)
 
         test_user = test['userId'].values
         test_item = test['movieId'].values
         test_rating = (test['rating'].values / 5.0) * test['combined_decay'].values
-        test_genres = test[mlb.classes_].values
 
+        test[mlb.classes_] = test[mlb.classes_].apply(pd.to_numeric, errors='coerce')
+        test_genres = np.array(test[mlb.classes_].values, dtype=np.float32)
+
+        # Debugging prints
+        print("Train Genres Type:", type(train_genres))
+        print("Train Genres Dtype:", train_genres.dtype)
+        print("Train Genres Shape:", train_genres.shape)
+        
         history = model.fit(
             [train_user, train_item, train_genres], train_rating,
             validation_data=([test_user, test_item, test_genres], test_rating),
@@ -90,29 +100,13 @@ class ModelTrainer:
 
             train = load_numpy_array_data(train_file_path)
             test = load_numpy_array_data(test_file_path)
-
             train = pd.DataFrame(train, columns=dataframe_columns)
             test = pd.DataFrame(test, columns=dataframe_columns)
 
             mlb = load_object(mlb_file_path)
-            # print(train.dtypes)
-            # print(test.dtypes)
 
             model_trainer_artifact = self.train_model(train, test, mlb)
             return model_trainer_artifact
 
         except Exception as e:
             raise CustomException(e, sys)
-
-        
-        
-        
-    # def track_mlflow(self, best_model, regression_metric):
-
-    #     with mlflow.start_run():
-    #         mlflow.log_metric("MAE", regression_metric.mae)
-    #         mlflow.log_metric("MSE", regression_metric.mse)
-    #         mlflow.log_metric("RMSE", regression_metric.rmse)
-    #         mlflow.log_metric("R2 Score", regression_metric.r2)
-
-    #         mlflow.sklearn.log_model(best_model, "model")

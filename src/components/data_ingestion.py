@@ -34,7 +34,7 @@ class DataIngestion:
                 logging.info("Fetching data from MongoDB collection: %s in database: %s", collection_name, db)
                 collection = db[collection_name]
                 
-                mongo_data = list(collection.find())
+                mongo_data = list(collection.find(limit=1000))
                 
                 if not mongo_data:
                     logging.warning("No data found in collection: %s", collection_name)

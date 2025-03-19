@@ -41,15 +41,16 @@ class DataTransformation:
         
     def perform_feature_engineering(self, combined_df:pd.DataFrame):
         try:
-            combined_df['tag'] = combined_df['tag'].astype(str).str.strip()
-
-            combined_df['tag'] = combined_df['tag'].fillna('')
             combined_df = combined_df.sort_values(by=['userId', 'movieId', 'timestamp'], ascending=[True, True, False])
             combined_df = combined_df.drop_duplicates(subset=['userId', 'movieId'], keep='first').reset_index(drop=True)
-            combined_df["tag"] = combined_df["tag"].str.lower().str.replace(" ", ",")
-            combined_df['genres'] = combined_df['genres'].str.lower().str.replace("|", ",")
+            combined_df["tag"] = combined_df["tag"].str.lower().str.replace(" ", ",").astype(str)
+            combined_df['genres'] = combined_df['genres'].str.lower().str.replace("|", ",").astype(str)
             combined_df['content'] = combined_df['genres'] + ',' + combined_df['tag']
             combined_df['release_year'] = combined_df['title'].str.extract(r'\((\d{4})\)').astype(float)
+            combined_df["tag"] = combined_df["tag"].fillna("").astype(str)
+            combined_df["genres"] = combined_df["genres"].fillna("").astype(str)
+            combined_df["title"] = combined_df["title"].fillna("").astype(str)
+            combined_df['content'] = combined_df['content'].fillna("").astype(str)
             median_year = combined_df['release_year'].median()
             combined_df['release_year'] = combined_df['release_year'].fillna(median_year)
             current_time = combined_df['timestamp'].max() # Use timestamp
@@ -91,15 +92,13 @@ class DataTransformation:
             combined_df = combined_df.sort_values(by=['userId', 'movieId', 'timestamp'], ascending=[True, True, False])
             df = self.perform_feature_engineering(combined_df)
             transformer = self.get_data_transformer_object(df['content'])
-            genres_encoded = pd.DataFrame(transformer.transform(df['content'].apply(lambda x: x.split(','))), 
+            genres_encoded = pd.DataFrame(transformer.transform(df['content'].apply(lambda x: x.split(','))).astype(np.int64), 
                                         columns=transformer.classes_, 
                                         index=df.index)
             df = pd.concat([df, genres_encoded], axis=1)
             
             train_df, test_df = self.split_train_test(df)
-            # print(train_df.dtypes)
-            # print(train_df.dtypes)
-            
+
             save_numpy_array_data(self.data_transformation_config.transformed_train_file_path, df=train_df)
             save_numpy_array_data(self.data_transformation_config.transformed_test_file_path, df=test_df)
             save_object(self.data_transformation_config.transformed_object_file_path, transformer)
