@@ -10,6 +10,7 @@ from src.exception.exception import CustomException
 from src.entity.artifact_entity import DataTransformationArtifact, ModelTrainerArtifact
 from src.entity.config_entity import ModelTrainerConfig
 from src.utils.main_utils.utils import save_object, load_object, load_numpy_array_data
+import pickle  
 from src.utils.ml_utils.metric.regression_metric import get_regression_score
 
 class ModelTrainer:
@@ -23,7 +24,7 @@ class ModelTrainer:
     def train_model(self, train, test, mlb):
         train['userId'], user_index = pd.factorize(train['userId'])
         train['movieId'], movie_index = pd.factorize(train['movieId'])
-
+        
         test['userId'] = test['userId'].map(lambda x: user_index.get_loc(x) if x in user_index else -1)
         test['movieId'] = test['movieId'].map(lambda x: movie_index.get_loc(x) if x in movie_index else -1)
         test = test[(test['userId'] != -1) & (test['movieId'] != -1)]
@@ -52,41 +53,26 @@ class ModelTrainer:
         train_user = train['userId'].values
         train_item = train['movieId'].values
         train_rating = (train['rating'].values / 5.0) * train['combined_decay'].values
-        
-        # Convert genres to numeric format and ensure correct data type
-        train[mlb.classes_] = train[mlb.classes_].apply(pd.to_numeric, errors='coerce')
-        train_genres = np.array(train[mlb.classes_].values, dtype=np.float32)
+        train_genres = train[mlb.classes_].values
 
         test_user = test['userId'].values
         test_item = test['movieId'].values
         test_rating = (test['rating'].values / 5.0) * test['combined_decay'].values
-
-        test[mlb.classes_] = test[mlb.classes_].apply(pd.to_numeric, errors='coerce')
-        test_genres = np.array(test[mlb.classes_].values, dtype=np.float32)
-
-        # Debugging prints
-        print("Train Genres Type:", type(train_genres))
-        print("Train Genres Dtype:", train_genres.dtype)
-        print("Train Genres Shape:", train_genres.shape)
+        test_genres = test[mlb.classes_].values
         
         history = model.fit(
-            [train_user, train_item, train_genres], train_rating,
-            validation_data=([test_user, test_item, test_genres], test_rating),
+            [train_user, train_item,train_genres], train_rating,
+            validation_data=([test_user, test_item,test_genres], test_rating),
             epochs=10, batch_size=256, verbose=1
         )
 
-        train_predictions = model.predict([train_user, train_item, train_genres])
-        test_predictions = model.predict([test_user, test_item, test_genres])
-
-        train_metric = get_regression_score(y_true=train_rating, y_pred=train_predictions)
-        test_metric = get_regression_score(y_true=test_rating, y_pred=test_predictions)
-
         save_object(self.model_trainer_config.trained_model_file_path, obj=model)
-
+        movie_index_path = os.path.join(os.path.dirname(self.model_trainer_config.trained_model_file_path), "movie_index.pkl")
+        with open(movie_index_path, 'wb') as f:
+            pickle.dump(movie_index, f)
+            
         model_trainer_artifact = ModelTrainerArtifact(
-            trained_model_file_path=self.model_trainer_config.trained_model_file_path,
-            train_metric_artifact=train_metric,
-            test_metric_artifact=test_metric
+            trained_model_file_path=self.model_trainer_config.trained_model_file_path
         )
         
         return model_trainer_artifact
