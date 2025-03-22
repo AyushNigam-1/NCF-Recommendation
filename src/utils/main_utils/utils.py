@@ -42,10 +42,8 @@ def save_numpy_array_data(file_path: str, df: pd.DataFrame):
 
     # Save dtypes separately as .pkl
     dtypes_path = file_path.replace(".npy", "_dtypes.pkl")
-    print("dtypes save numpy -->",df.dtypes)
     df.dtypes.to_pickle(dtypes_path)
 
-    # Save dtypes in a human-readable format (JSON)
     dtypes_json_path = file_path.replace(".npy", "_dtypes.json")
     with open(dtypes_json_path, "w") as f:
         json.dump(df.dtypes.astype(str).to_dict(), f, indent=4)
@@ -74,17 +72,12 @@ def load_object(file_path: str ) -> object:
     
 def load_numpy_array_data(file_path: str) -> pd.DataFrame:
     try:
-        # Load the data
         array = np.load(file_path, allow_pickle=True)
 
-        # Load the dtypes
         dtypes_path = file_path.replace(".npy", "_dtypes.pkl")
         dtypes = pd.read_pickle(dtypes_path)
-        print("dtypes loads -->",dtypes)
-        # Convert back to DataFrame with correct dtypes
         df = pd.DataFrame(array, columns=dtypes.index)
         for col in df.columns:
-            print("col",col,"type" ,dtypes[col])
             df[col] = df[col].astype(dtypes[col])
 
         return df

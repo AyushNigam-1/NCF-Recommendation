@@ -78,14 +78,12 @@ class DataCleaning:
         expected_dtypes = self._schema_config[file_name]['columns']
         try:
             for column, expected_dtype in expected_dtypes.items():
-                # print(column,expected_dtype)                
                 if column in df.columns:
                     actual_dtype = str(df[column].dtype)
 
                     # Handle object vs string efficiently
                     if expected_dtype == "string" and actual_dtype == "object":
                         continue  
-                    # print(expected_dtype, actual_dtype)
                     if actual_dtype != expected_dtype:
                         try:
                             df[column] = self._convert_column(df[column], expected_dtype)

@@ -34,7 +34,7 @@ class DataIngestion:
                 logging.info("Fetching data from MongoDB collection: %s in database: %s", collection_name, db)
                 collection = db[collection_name]
                 
-                mongo_data = list(collection.find(limit=500))
+                mongo_data = list(collection.find())
                 
                 if not mongo_data:
                     logging.warning("No data found in collection: %s", collection_name)
@@ -81,7 +81,6 @@ class DataIngestion:
             logging.info("Starting data ingestion process...")
             
             dataframes = self.export_multiple_collections_as_dataframe()
-            # print(dataframes.items())
             for collection_name, dataframe in dataframes.items():
                 self.export_data_into_feature_store(dataframe , collection_name)
                 logging.info("Exported data from collection: %s", collection_name)

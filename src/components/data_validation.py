@@ -36,7 +36,6 @@ class DataValidation:
     def validate_dtypes(self, dataframe: pd.DataFrame,file_name:str) -> bool:
         try:            
             expected_dtypes = self._schema_config.get(file_name, {})
-            # print(expected_dtypes)
             validation_passed = True
 
             for column, expected_dtype in expected_dtypes.get("columns").items():
@@ -70,7 +69,6 @@ class DataValidation:
     
     def check_missing_values(self, dataframe: pd.DataFrame) -> bool:
         try:
-            # print (dataframe.isna().sum())
             return not dataframe.isnull().sum().any()
         except Exception as e:
             raise CustomException(e, sys)

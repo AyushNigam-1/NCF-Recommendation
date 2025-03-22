@@ -11,7 +11,6 @@ from src.entity.artifact_entity import DataTransformationArtifact, ModelTrainerA
 from src.entity.config_entity import ModelTrainerConfig
 from src.utils.main_utils.utils import save_object, load_object, load_numpy_array_data
 import pickle  
-from src.utils.ml_utils.metric.regression_metric import get_regression_score
 
 class ModelTrainer:
     def __init__(self, model_trainer_config: ModelTrainerConfig, data_transformation_artifact: DataTransformationArtifact):
@@ -20,7 +19,15 @@ class ModelTrainer:
             self.data_transformation_artifact = data_transformation_artifact
         except Exception as e:
             raise CustomException(e, sys)
-
+        
+    def find_value_in_dataframe(self,df, value):
+        """Finds a value in a DataFrame and returns the columns it exists in."""
+        columns_with_value = []
+        for col in df.columns:
+            if (df[col] == value).any():
+                columns_with_value.append(col)
+        return columns_with_value
+    
     def train_model(self, train, test, mlb):
         train['userId'], user_index = pd.factorize(train['userId'])
         train['movieId'], movie_index = pd.factorize(train['movieId'])
@@ -54,13 +61,13 @@ class ModelTrainer:
         train_item = train['movieId'].values
         train_rating = (train['rating'].values / 5.0) * train['combined_decay'].values
         train_genres = train[mlb.classes_].values
-
+  
         test_user = test['userId'].values
         test_item = test['movieId'].values
         test_rating = (test['rating'].values / 5.0) * test['combined_decay'].values
-        test_genres = test[mlb.classes_].values
+        test_genres = test[mlb.classes_].values.astype("int32")
         
-        history = model.fit(
+        model.fit(
             [train_user, train_item,train_genres], train_rating,
             validation_data=([test_user, test_item,test_genres], test_rating),
             epochs=10, batch_size=256, verbose=1
