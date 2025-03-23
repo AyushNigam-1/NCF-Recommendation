@@ -28,7 +28,7 @@ class ModelTrainer:
                 columns_with_value.append(col)
         return columns_with_value
     
-    def train_model(self, train, test, mlb):
+    def train_model(self, train, test, mlb , df):
         train['userId'], user_index = pd.factorize(train['userId'])
         train['movieId'], movie_index = pd.factorize(train['movieId'])
         
@@ -41,8 +41,9 @@ class ModelTrainer:
         genre_input = Input(shape=(len(mlb.classes_),), name='genre_input')
 
         user_embedding = Embedding(input_dim=len(user_index), output_dim=50, name='user_embedding')(user_input)
-        item_embedding = Embedding(input_dim=len(movie_index), output_dim=50, name='item_embedding')(item_input)
-
+        item_embedding = Embedding(input_dim=df['movieId'].nunique(), output_dim=50, name='item_embedding')(item_input)
+        len(user_index)
+        len(movie_index)
         user_vector = Flatten()(user_embedding)
         item_vector = Flatten()(item_embedding)
 
@@ -65,7 +66,7 @@ class ModelTrainer:
         test_user = test['userId'].values
         test_item = test['movieId'].values
         test_rating = (test['rating'].values / 5.0) * test['combined_decay'].values
-        test_genres = test[mlb.classes_].values.astype("int32")
+        test_genres = test[mlb.classes_].values
         
         model.fit(
             [train_user, train_item,train_genres], train_rating,
@@ -73,7 +74,9 @@ class ModelTrainer:
             epochs=10, batch_size=256, verbose=1
         )
 
-        save_object(self.model_trainer_config.trained_model_file_path, obj=model)
+        model_dir = os.path.dirname(self.model_trainer_config.trained_model_file_path)
+        os.makedirs(model_dir, exist_ok=True)
+        model.save(self.model_trainer_config.trained_model_file_path)
         movie_index_path = os.path.join(os.path.dirname(self.model_trainer_config.trained_model_file_path), "movie_index.pkl")
         with open(movie_index_path, 'wb') as f:
             pickle.dump(movie_index, f)
@@ -89,16 +92,16 @@ class ModelTrainer:
             train_file_path = self.data_transformation_artifact.transformed_train_file_path
             test_file_path = self.data_transformation_artifact.transformed_test_file_path
             mlb_file_path = self.data_transformation_artifact.transformed_object_file_path
-            dataframe_columns = self.data_transformation_artifact.dataframe_columns
+            df = self.data_transformation_artifact.dataframe
 
             train = load_numpy_array_data(train_file_path)
             test = load_numpy_array_data(test_file_path)
-            train = pd.DataFrame(train, columns=dataframe_columns)
-            test = pd.DataFrame(test, columns=dataframe_columns)
+            train = pd.DataFrame(train, columns=df.columns)
+            test = pd.DataFrame(test, columns=df.columns)
 
             mlb = load_object(mlb_file_path)
 
-            model_trainer_artifact = self.train_model(train, test, mlb)
+            model_trainer_artifact = self.train_model(train, test, mlb , df)
             return model_trainer_artifact
 
         except Exception as e:

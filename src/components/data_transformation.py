@@ -11,7 +11,7 @@ from src.entity.artifact_entity import (
     DataValidationArtifact
 )
 from src.entity.config_entity import DataTransformationConfig
-
+import os
 class DataTransformation:
     def __init__(self, data_validation_artifact: DataValidationArtifact,
                  data_transformation_config: DataTransformationConfig):
@@ -72,8 +72,8 @@ class DataTransformation:
             current_year = combined_df['release_year'].max()
             combined_df['year_decay_weight'] = combined_df['release_year'].apply(lambda x: np.exp(-0.001 * (current_year - x)))
             combined_df['combined_decay'] = combined_df['time_decay_weight'] * combined_df['year_decay_weight']
-            combined_df['userId'] -= 2
-            combined_df['movieId'] -= 2
+            combined_df['userId'] -= 1
+            combined_df['movieId'] -= 1
 
             content_series = combined_df["content"] # create the pandas series.
             combined_df = combined_df.drop("content", axis=1)
@@ -124,6 +124,8 @@ class DataTransformation:
             # df = pd.concat([df, genres_encoded], axis=1)
             
             train_df, test_df = self.split_train_test(df)
+            movies_path = os.path.join(os.path.dirname(self.data_transformation_config.data_transformation_dir), "movies_data.csv") 
+            df.to_csv(movies_path, index=False) 
             # combined_csv_path = "./combined_data.csv"
             # combined_format_path = "./combined_data_type.txt"
             # with open(combined_format_path, 'w') as f:
@@ -138,7 +140,7 @@ class DataTransformation:
                 transformed_object_file_path=self.data_transformation_config.transformed_object_file_path,
                 transformed_train_file_path=self.data_transformation_config.transformed_train_file_path,
                 transformed_test_file_path=self.data_transformation_config.transformed_test_file_path,
-                dataframe_columns=df.columns
+                dataframe=df
             )
             return data_transformation_artifact
         except Exception as e:
