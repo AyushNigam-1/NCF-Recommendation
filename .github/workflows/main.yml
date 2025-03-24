@@ -47,4 +47,4 @@ jobs:
 
       - name: Push all files to Hugging Face Spaces
         run: |
-          huggingface-cli upload Ayush456/NCF-Recommendation .
+          huggingface-cli upload Ayush456/ML_NCF-Recommendation .
